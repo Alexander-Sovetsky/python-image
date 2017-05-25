@@ -1,9 +1,14 @@
 from setuptools import setup, find_packages
-from os.path import join, dirname
-
+with open('README.rst') as f:
+readme = f.read()
+with open('LICENSE') as f:
+license = f.read()
 setup(
-    name='python-image',
-    version='1.0',
-    packages=find_packages(),
-    long_description=open(join(dirname(__file__), 'README.txt')).read(),
+name='python-image',
+version='0.1.0',
+description='project for OCT',
+long_description=readme,
+author='Alexander Sovetsky',
+license=license,
+packages=find_packages(exclude=('tests', 'docs'))
 )

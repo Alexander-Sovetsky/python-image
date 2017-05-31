@@ -15,9 +15,12 @@ import array
 import os
 import matplotlib.pyplot as plt
 import math, time
+import numexpr as ne
+import numba
 
 #Каталог из которого будем брать файлы
 directory = 'F:/example/'
+
 def wayfunc(direct):
     #Получаем список файлов в переменную files
     files = os.listdir(direct)
@@ -34,26 +37,29 @@ name=directory+filename
 with open(name,'rb') as f:
  dat=np.fromfile(f,dtype=np.ushort)
 #Задаём параметра одного В-скана    
-datspectral=512#.astype(int)
-datAscans=1024
+datspectral=int(512)
+datAscans=int(1024)
 #Определяем количество кадров(В-сканов)
+@numba.jit
 def sizefunc(name,datspectral,datAscans):
     size=os.stat(name).st_size
     frames=int(size/(datspectral*datAscans*2))#2байта-одно значение
     return frames
-frames=sizefunc(name,datspectral,datAscans)
+frames=sizefunc(name, datspectral, datAscans)
 #Изменяем форму массива: из строки в 3D-массив
 m=np.reshape(np.ravel(dat),(datspectral,datAscans,frames), order='F')
 #Задаём и получаем структурные изображения из спектров B-сканов
+@numba.jit
 def getstruct(m,datspectral,datAscans,frames):
-   structure1=np.ndarray(shape=(datspectral,datAscans/4,frames),dtype=np.complex)#complex64
-   k=np.ndarray(shape=(datspectral,datAscans/4,frames),dtype=np.complex)
+   structure1=np.ndarray(shape=(datspectral,datAscans/4,frames),dtype=np.complex64)#complex64
+   k=np.ndarray(shape=(datspectral,datAscans/4,frames),dtype=np.complex64)
    for n in range(0,frames):
       k[:,:,n]=-1j*m[:,1::4,n]+1j*m[:,3::4,n]+m[:,3::4,n]+m[:,1::4,n]-2*m[:,2::4,n]
       structure1[:,:,n]=np.fft.ifft2(k[:,:,n],s=None, axes=(-2, -1),norm='ortho')#-2,-1 np.fft.ifft2
-   structure=np.double(20*(np.log10(np.abs(structure1))))
-   return structure
-structure=getstruct(m,datspectral,datAscans,frames)
+   return structure1
+
+structure=np.log10(np.abs(getstruct(m,datspectral,datAscans,frames)))
+structure=np.double(ne.evaluate('20*structure'))
 #Строим структурные изображения
 fig = plt.figure(figsize=(12,4))
 bounds = np.linspace(np.min(structure), np.max(structure), 30)
